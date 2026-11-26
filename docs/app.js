@@ -1,7 +1,5 @@
-// Local server.js relays /api same-origin. On GitHub Pages there is no relay, so call the real API directly;
-// that only works in a browser with CORS checks disabled.
-const DIRECT = !location.port;
-const API = DIRECT ? 'https://demo-rtc.everbot.com.tw/api/livekit-token/' : 'api/livekit-token/';
+// Local server.js relays /api same-origin; on GitHub Pages the Cloudflare Worker (worker/) does the relaying.
+const API = location.port ? 'api/livekit-token/' : 'https://rtc-join-latest-relay.103832.workers.dev/';
 const NAME = 'test';
 
 document.getElementById('join-latest').addEventListener('click', async (e) => {
@@ -21,8 +19,6 @@ document.getElementById('join-latest').addEventListener('click', async (e) => {
     if (!r.ok || !data.token) throw Error(data.error || '加入房間失敗');
     location.href = `room.html?name=${encodeURIComponent(NAME)}&token=${encodeURIComponent(data.token)}`;
   } catch (err) {
-    msg.textContent = err instanceof TypeError && DIRECT
-      ? '連不到 API（被 CORS 擋住），請用關閉 CORS 檢查的 Chrome 開啟'
-      : err.message;
+    msg.textContent = err.message;
   }
 });
