@@ -1,0 +1,51 @@
+<!DOCTYPE html><html lang="zh-TW"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Everbot RTC</title><link rel="icon" href="favicon.ico"/>
+<style>
+  body{margin:0;background:#000;color:#fff;font-family:system-ui,sans-serif;height:100vh;display:flex;flex-direction:column}
+  #grid{flex:1;display:grid;gap:8px;padding:8px;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));align-content:center}
+  video{width:100%;aspect-ratio:16/9;background:#222;border-radius:8px;object-fit:cover}
+  #bar{display:flex;gap:12px;justify-content:center;align-items:center;padding:12px;background:#111}
+  button{padding:8px 16px;border:0;border-radius:6px;cursor:pointer;font-size:14px}
+  #leave{background:#dc2626;color:#fff}
+</style></head><body>
+<div id="grid"></div>
+<div id="bar"><span id="status">連線中…</span><button id="mic">靜音</button><button id="cam">關鏡頭</button><button id="leave">離開</button></div>
+<script src="https://cdn.jsdelivr.net/npm/livekit-client@2.5.7/dist/livekit-client.umd.js"></script>
+<script>
+const LIVEKIT_URL = 'wss://demo-rtc-livekit.everbot.com.tw';
+const { Room, RoomEvent, Track } = LivekitClient;
+const q = new URLSearchParams(location.search);
+const token = q.get('token');
+const status = document.getElementById('status');
+const grid = document.getElementById('grid');
+if (!token) location.href = './';
+
+const room = new Room();
+const attach = (track) => {
+  const el = track.attach();
+  if (track.kind === Track.Kind.Video) grid.appendChild(el);
+  else document.body.appendChild(el);
+};
+room
+  .on(RoomEvent.TrackSubscribed, attach)
+  .on(RoomEvent.TrackUnsubscribed, (t) => t.detach().forEach((el) => el.remove()))
+  .on(RoomEvent.LocalTrackPublished, (pub) => pub.track.kind === Track.Kind.Video && attach(pub.track))
+  .on(RoomEvent.Disconnected, () => (location.href = './'));
+
+(async () => {
+  try {
+    await room.connect(LIVEKIT_URL, token);
+    status.textContent = `房間 ${room.name}（${q.get('name') || ''}）`;
+    document.body.dataset.connected = '1';
+    await room.localParticipant.enableCameraAndMicrophone().catch((e) => (status.textContent += ` · 無法開啟鏡頭/麥克風：${e.message}`));
+  } catch (e) {
+    status.textContent = `連線失敗：${e.message}`;
+    document.body.dataset.error = e.message;
+  }
+})();
+
+const mic = document.getElementById('mic'), cam = document.getElementById('cam');
+mic.onclick = async () => { const on = !room.localParticipant.isMicrophoneEnabled; await room.localParticipant.setMicrophoneEnabled(on); mic.textContent = on ? '靜音' : '取消靜音'; };
+cam.onclick = async () => { const on = !room.localParticipant.isCameraEnabled; await room.localParticipant.setCameraEnabled(on); cam.textContent = on ? '關鏡頭' : '開鏡頭'; };
+document.getElementById('leave').onclick = () => room.disconnect();
+</script></body></html>
