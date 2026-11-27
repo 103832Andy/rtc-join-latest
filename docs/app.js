@@ -9,7 +9,7 @@ document.getElementById('join-latest').addEventListener('click', async (e) => {
   try {
     const { rooms } = await (await fetch(API + 'rooms')).json();
     const room = rooms?.at(-1);
-    if (room?.status !== '等待中') throw Error('目前沒有等待中的房間');
+    if (!['等待中', '進行中'].includes(room?.status)) throw Error('目前沒有可加入的房間');
     const r = await fetch(API + 'join-room', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
